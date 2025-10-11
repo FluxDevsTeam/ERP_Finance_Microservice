@@ -1,6 +1,4 @@
 from django.db import models
-from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
 from apps.accounts.models import Account
 
 
@@ -40,7 +38,6 @@ class AssetCategory(models.Model):
         limit_choices_to={'category__type': 'asset'}
     )
     
-    # Integration with Identity Microservice
     tenant = models.UUIDField()
     branch = models.UUIDField()
     created_by = models.UUIDField()
@@ -81,7 +78,6 @@ class Asset(models.Model):
     location = models.CharField(max_length=100, blank=True)
     notes = models.TextField(blank=True)
 
-    # Integration with Identity Microservice
     tenant = models.UUIDField()
     branch = models.UUIDField()
     created_by = models.UUIDField()
@@ -96,7 +92,7 @@ class Asset(models.Model):
         return f"{self.asset_number} - {self.name}"
 
     def save(self, *args, **kwargs):
-        if not self.pk:  # New asset
+        if not self.pk:
             self.current_value = self.purchase_cost
             if not self.useful_life_years:
                 self.useful_life_years = self.category.useful_life_years
@@ -107,7 +103,6 @@ class Asset(models.Model):
         super().save(*args, **kwargs)
 
     def calculate_depreciation(self, date):
-        """Calculate depreciation amount for a given date"""
         if self.status != 'active' or date <= (self.last_depreciation_date or self.purchase_date):
             return 0
 
@@ -115,16 +110,14 @@ class Asset(models.Model):
             annual_depreciation = (self.purchase_cost - self.salvage_value) / self.useful_life_years
             monthly_depreciation = annual_depreciation / 12
             return monthly_depreciation
-        else:  # reducing_balance
+        else:
             current_value = self.current_value
             monthly_rate = self.depreciation_rate / 12 / 100
             return current_value * monthly_rate
 
     def record_depreciation(self, date, amount):
-        """Record depreciation transaction"""
         from apps.journal.models import JournalEntry, JournalLine
 
-        # Create journal entry
         journal_entry = JournalEntry.objects.create(
             date=date,
             reference=f"DEP-{self.asset_number}-{date}",
@@ -134,7 +127,6 @@ class Asset(models.Model):
             created_by=self.created_by
         )
 
-        # Debit Depreciation Expense
         JournalLine.objects.create(
             journal_entry=journal_entry,
             account=self.category.depreciation_account,
@@ -145,7 +137,6 @@ class Asset(models.Model):
             branch=self.branch
         )
 
-        # Credit Accumulated Depreciation
         JournalLine.objects.create(
             journal_entry=journal_entry,
             account=self.category.accumulated_depreciation_account,
@@ -156,7 +147,6 @@ class Asset(models.Model):
             branch=self.branch
         )
 
-        # Update asset
         self.current_value -= amount
         self.last_depreciation_date = date
         self.save()
@@ -183,15 +173,12 @@ class AssetDisposal(models.Model):
         return f"Disposal of {self.asset.name}"
 
     def record_disposal(self):
-        """Record asset disposal transactions"""
         from apps.journal.models import JournalEntry, JournalLine
 
-        # Calculate gain/loss
         net_sale_proceeds = self.sale_price - self.costs_of_disposal
         book_value = self.asset.current_value
         gain_loss = net_sale_proceeds - book_value
 
-        # Create journal entry
         journal_entry = JournalEntry.objects.create(
             date=self.date,
             reference=f"DISP-{self.asset.asset_number}",
@@ -201,8 +188,7 @@ class AssetDisposal(models.Model):
             created_by=self.created_by
         )
 
-        # Debit Cash/Bank for sale proceeds
-        cash_account = Account.objects.get(code='1001')  # Default cash account
+        cash_account = Account.objects.get(code='1001')
         if self.sale_price > 0:
             JournalLine.objects.create(
                 journal_entry=journal_entry,
@@ -225,7 +211,6 @@ class AssetDisposal(models.Model):
             branch=self.branch
         )
 
-        # Debit Accumulated Depreciation
         accumulated_depreciation = self.asset.purchase_cost - self.asset.current_value
         if accumulated_depreciation > 0:
             JournalLine.objects.create(
@@ -238,11 +223,10 @@ class AssetDisposal(models.Model):
                 branch=self.branch
             )
 
-        # Record gain/loss
         if gain_loss != 0:
             gain_loss_account = Account.objects.get(
                 code='8001' if gain_loss > 0 else '8002'
-            )  # Gain/Loss on disposal accounts
+            )
             JournalLine.objects.create(
                 journal_entry=journal_entry,
                 account=gain_loss_account,
@@ -253,7 +237,6 @@ class AssetDisposal(models.Model):
                 branch=self.branch
             )
 
-        # Update asset status
         self.asset.status = 'disposed'
         self.asset.save()
 
