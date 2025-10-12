@@ -68,7 +68,6 @@ class BudgetVariance(models.Model):
     variance_percentage = models.DecimalField(max_digits=8, decimal_places=2)
     notes = models.TextField(blank=True)
     
-    # Integration with Identity Microservice
     tenant = models.UUIDField()
     branch = models.UUIDField()
     calculated_at = models.DateTimeField(auto_now=True)
@@ -81,7 +80,6 @@ class BudgetVariance(models.Model):
         return f"{self.budget.name} - {self.account.name} - Period {self.period_num}"
 
     def calculate_variance(self):
-        """Calculate variance amount and percentage"""
         self.variance_amount = self.actual_amount - self.budgeted_amount
         if self.budgeted_amount != 0:
             self.variance_percentage = (self.variance_amount / self.budgeted_amount) * 100
