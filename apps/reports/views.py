@@ -46,7 +46,6 @@ class GeneratedReportViewSet(viewsets.ModelViewSet):
 
         template = serializer.validated_data['template']
         
-        # Map report types to generator methods
         report_methods = {
             'balance_sheet': generator.get_balance_sheet,
             'income_statement': generator.get_income_statement,
@@ -64,12 +63,10 @@ class GeneratedReportViewSet(viewsets.ModelViewSet):
             'fixed_assets': generator.get_fixed_assets_register
         }
         
-        # Get the appropriate report method
         report_method = report_methods.get(template.report_type)
         if not report_method:
             raise ValueError(f"Unknown report type: {template.report_type}")
             
-        # Generate report data
         report_data = report_method()
 
         serializer.save(
