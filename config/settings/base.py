@@ -24,13 +24,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'api',
     'apps.accounts',
-    'apps.assets',
-    'apps.budget',
     'apps.expense',
     'apps.income',
-    'apps.journal',
-    'apps.reports',
-    'apps.documents',
 ]
 
 MIDDLEWARE = [

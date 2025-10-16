@@ -4,13 +4,13 @@ from drf_yasg import openapi
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="ERP Support",
+        title="ERP Finance Microservice",
         default_version="v1",
         description="""
-            An API For Software ERP.
+            An API Template For ERP Finance App.
 
             **Servers:**
-            - Local: [http://localhost:8000](http://localhost:8000)
+            - Local: [http://localhost:8808](http://localhost:8808)
             - Production: [https://domain.com/](https://domain.com/)
             """,
         contact=openapi.Contact(email="suskidee@gmail.com"),
