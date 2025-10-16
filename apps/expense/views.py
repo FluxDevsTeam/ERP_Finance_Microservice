@@ -184,3 +184,17 @@ class ExpenseViewSet(viewsets.ModelViewSet):
             response_data['yearly_total'] = float(yearly_total)
 
         return Response(response_data)
+
+    @swagger_helper("Expenses", "Expense")
+    def destroy(self, request, *args, **kwargs):
+        """
+        Deletes an expense instance.
+        """
+        return super().destroy(request, *args, **kwargs)
+
+    @swagger_helper("Expenses", "Expense")
+    def update(self, request, *args, **kwargs):
+        """
+        Update method is not allowed for expenses.
+        """
+        return Response({"detail": "Method Not Allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)

@@ -101,3 +101,17 @@ class IncomeViewSet(viewsets.ModelViewSet):
             response_data['yearly_total'] = float(queryset.filter(date__year=year).aggregate(Sum('amount'))['amount__sum'] or 0.0)
 
         return Response(response_data)
+
+    @swagger_helper("Incomes", "Income")
+    def destroy(self, request, *args, **kwargs):
+        """
+        Deletes an income instance.
+        """
+        return super().destroy(request, *args, **kwargs)
+
+    @swagger_helper("Incomes", "Income")
+    def update(self, request, *args, **kwargs):
+        """
+        Update method is not allowed for incomes.
+        """
+        return Response({"detail": "Method Not Allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)

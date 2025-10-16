@@ -28,6 +28,20 @@ class AccountViewSet(viewsets.ModelViewSet):
         return super().partial_update(request, *args, **kwargs)
 
     @swagger_helper("Accounts", "Account")
+    def destroy(self, request, *args, **kwargs):
+        """
+        Deletes an account instance.
+        """
+        return super().destroy(request, *args, **kwargs)
+
+    @swagger_helper("Accounts", "Account")
+    def update(self, request, *args, **kwargs):
+        """
+        Update method is not allowed for accounts.
+        """
+        return Response({"detail": "Method Not Allowed"}, status=status.HTTP_405_METHOD_NOT_ALLOWED)
+
+    @swagger_helper("Accounts", "Account")
     def perform_create(self, serializer):
         serializer.save()
 
