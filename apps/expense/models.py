@@ -1,4 +1,6 @@
 from django.db import models
+from django.core.exceptions import ValidationError
+from apps.accounts.models import Account
 
 
 class ExpenseCategory(models.Model):
@@ -10,7 +12,7 @@ class ExpenseCategory(models.Model):
     tenant = models.UUIDField()
     branch = models.UUIDField()
     created_by = models.UUIDField()
-    updated_by = models.UUIDField(null=True)
+    updated_by = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -36,6 +38,7 @@ class Expense(models.Model):
 
     date = models.DateField()
     category = models.ForeignKey(ExpenseCategory, on_delete=models.PROTECT)
+    account = models.ForeignKey(Account, on_delete=models.PROTECT)
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     description = models.TextField()
     reference = models.CharField(max_length=100)
@@ -47,12 +50,17 @@ class Expense(models.Model):
     tenant = models.UUIDField()
     branch = models.UUIDField()
     created_by = models.UUIDField()
-    updated_by = models.UUIDField(null=True)
+    updated_by = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ['-date', '-created_at']
+        unique_together = ('reference', 'tenant', 'branch')
 
     def __str__(self):
         return f"{self.date} - {self.category.name} - {self.amount}"
+
+    def clean(self):
+        if self.amount <= 0:
+            raise ValidationError("Amount must be positive.")
