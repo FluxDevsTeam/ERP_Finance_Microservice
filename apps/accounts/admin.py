@@ -1,24 +1,14 @@
 from django.contrib import admin
-from .models import Account, AccountCategory, AccountTransaction
-
-
-@admin.register(AccountCategory)
-class AccountCategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code', 'type', 'tenant', 'branch')
-    list_filter = ('type', 'tenant', 'branch')
-    search_fields = ('name', 'code')
-
+from .models import Account, BalanceSwitchLog
 
 @admin.register(Account)
 class AccountAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code', 'category', 'balance', 'tenant', 'branch')
-    list_filter = ('category', 'tenant', 'branch')
-    search_fields = ('name', 'code')
+    list_display = ('name', 'account_type', 'balance', 'tenant', 'branch', 'created_at', 'updated_at')
+    search_fields = ('name', 'account_type')
+    list_filter = ('account_type', 'tenant', 'branch')
 
-
-@admin.register(AccountTransaction)
-class AccountTransactionAdmin(admin.ModelAdmin):
-    list_display = ('date', 'account', 'type', 'amount', 'reference', 'tenant', 'branch')
-    list_filter = ('type', 'account', 'tenant', 'branch')
-    search_fields = ('reference', 'description')
-    date_hierarchy = 'date'
+@admin.register(BalanceSwitchLog)
+class BalanceSwitchLogAdmin(admin.ModelAdmin):
+    list_display = ('from_account', 'to_account', 'amount', 'switch_date', 'tenant', 'branch', 'created_at', 'updated_at')
+    search_fields = ('from_account__name', 'to_account__name')
+    list_filter = ('switch_date', 'tenant', 'branch')

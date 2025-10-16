@@ -1,108 +1,71 @@
 from django.db import models
+from decimal import Decimal
+from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
-from django.utils.translation import gettext_lazy as _
-
-
-class AccountCategory(models.Model):
-    ACCOUNT_TYPES = (
-        ('asset', 'Asset'),
-        ('liability', 'Liability'),
-        ('equity', 'Equity'),
-        ('revenue', 'Revenue'),
-        ('expense', 'Expense'),
-    )
-
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=20, unique=True)
-    description = models.TextField(blank=True)
-    type = models.CharField(max_length=20, choices=ACCOUNT_TYPES)
-    
-    # Integration with Identity Microservice
-    tenant = models.UUIDField()
-    branch = models.UUIDField()
-    created_by = models.UUIDField()
-    updated_by = models.UUIDField(null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        verbose_name = 'Account Category'
-        verbose_name_plural = 'Account Categories'
-        unique_together = ('code', 'tenant')
-        ordering = ['code']
-
-    def __str__(self):
-        return f"{self.code} - {self.name}"
+from datetime import date
 
 
 class Account(models.Model):
-    name = models.CharField(max_length=100)
-    code = models.CharField(max_length=20)
-    description = models.TextField(blank=True)
-    category = models.ForeignKey(AccountCategory, on_delete=models.PROTECT, related_name='accounts')
-    is_active = models.BooleanField(default=True)
-    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    
-    # Integration with Identity Microservice
-    tenant = models.UUIDField()
-    branch = models.UUIDField()
-    created_by = models.UUIDField()
-    updated_by = models.UUIDField(null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ('code', 'tenant')
-        ordering = ['code']
-
-    def __str__(self):
-        return f"{self.code} - {self.name}"
-
-    def update_balance(self, amount, transaction_type):
-        """
-        Update account balance based on transaction type
-        """
-        if transaction_type == 'debit':
-            if self.category.type in ['asset', 'expense']:
-                self.balance += amount
-            else:
-                self.balance -= amount
-        else:  # credit
-            if self.category.type in ['asset', 'expense']:
-                self.balance -= amount
-            else:
-                self.balance += amount
-        self.save()
-
-
-class AccountTransaction(models.Model):
-    TRANSACTION_TYPES = (
-        ('debit', 'Debit'),
-        ('credit', 'Credit'),
+    ACCOUNT_TYPES = (
+        ('CASH', 'Cash'),
+        ('BANK', 'Bank'),
+        ('DEBT', 'Debt'),
     )
 
-    date = models.DateField()
-    account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='transactions')
-    type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
-    amount = models.DecimalField(max_digits=15, decimal_places=2)
-    reference = models.CharField(max_length=100)
-    description = models.TextField()
-    
-    # Integration with Identity Microservice
+    name = models.CharField(max_length=100)
+    account_type = models.CharField(max_length=20, choices=ACCOUNT_TYPES)
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=Decimal("0"))
     tenant = models.UUIDField()
     branch = models.UUIDField()
     created_by = models.UUIDField()
-    updated_by = models.UUIDField(null=True)
+    updated_by = models.UUIDField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        ordering = ['-date', '-created_at']
+        verbose_name = 'Account'
+        verbose_name_plural = 'Accounts'
+        unique_together = ('name', 'tenant', 'branch')
+        ordering = ['name']
 
     def __str__(self):
-        return f"{self.date} - {self.reference} ({self.amount})"
+        return f"{self.name} ({self.account_type}) - Tenant: {self.tenant}"
 
-    def save(self, *args, **kwargs):
-        if not self.pk:  # Only update balance on creation
-            self.account.update_balance(self.amount, self.type)
-        super().save(*args, **kwargs)
+    def clean(self):
+        if self.balance < 0:
+            raise ValidationError("Account balance cannot be negative.")
+
+
+class BalanceSwitchLog(models.Model):
+    PAYMENT_METHODS = (
+        ('CASH', 'Cash'),
+        ('BANK', 'Bank'),
+        ('DEBT', 'Debt'),
+    )
+
+    from_account = models.ForeignKey(Account, related_name='from_switches', on_delete=models.CASCADE)
+    to_account = models.ForeignKey(Account, related_name='to_switches', on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=15, decimal_places=2, validators=[MinValueValidator(0)])
+    switch_date = models.DateField(default=date.today)
+    tenant = models.UUIDField()
+    branch = models.UUIDField()
+    created_by = models.UUIDField()
+    updated_by = models.UUIDField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Balance Switch Log'
+        verbose_name_plural = 'Balance Switch Logs'
+        ordering = ['-switch_date']
+
+    def __str__(self):
+        return f"Switch from {self.from_account} to {self.to_account} ({self.amount}) on {self.switch_date}"
+
+    def clean(self):
+        if self.from_account == self.to_account:
+            raise ValidationError("Source and destination accounts must be different.")
+        if self.from_account.tenant != self.to_account.tenant or self.from_account.branch != self.to_account.branch:
+            raise ValidationError("Accounts must belong to the same tenant and branch.")
+        if self.amount <= 0:
+            raise ValidationError("Switch amount must be positive.")
