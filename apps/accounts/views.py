@@ -43,7 +43,17 @@ class AccountViewSet(viewsets.ModelViewSet):
 
     @swagger_helper("Accounts", "Account")
     def perform_create(self, serializer):
-        serializer.save()
+        serializer.save(
+            tenant=self.request.auth['tenant'],
+            branch=self.request.auth['branches'][0],  # Using first branch
+            created_by=self.request.user.id
+        )
+
+    @swagger_helper("Accounts", "Account")
+    def perform_update(self, serializer):
+        serializer.save(
+            updated_by=self.request.user.id
+        )
 
 
 class BalanceSwitchViewSet(viewsets.ModelViewSet):

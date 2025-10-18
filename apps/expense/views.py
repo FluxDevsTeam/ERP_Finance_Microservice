@@ -51,14 +51,20 @@ class ExpenseViewSet(viewsets.ModelViewSet):
 
     @swagger_helper("Expenses", "Expense")
     def perform_create(self, serializer):
-        serializer.save()
+        serializer.save(
+            tenant=self.request.auth['tenant'],
+            branch=self.request.auth['branches'][0],
+            created_by=self.request.user.id
+        )
 
     @swagger_helper("Expenses", "Expense")
     def perform_update(self, serializer):
         instance = self.get_object()
         if instance.status not in ['draft', 'pending_approval']:
             raise serializers.ValidationError("Only draft or pending_approval expenses can be updated.")
-        serializer.save()
+        serializer.save(
+            updated_by=self.request.user.id
+        )
 
     def perform_destroy(self, instance):
         if instance.status == 'paid':
